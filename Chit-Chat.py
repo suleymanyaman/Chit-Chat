@@ -4,27 +4,32 @@ from PyQt5.QtGui import *
 import sys
 import MySQLdb
 import socket
-from playsound import playsound
+from pydub import AudioSegment
+from pydub.playback import play
 from threading import Thread
 import functools
-import os 
+import os
+from PIL import Image
+import io
 
 app = QApplication(sys.argv)
-app.setWindowIcon(QIcon("icon.ico"))
+
 s = socket.socket()
 HOST=socket.gethostbyname(socket.gethostname())
+
 PORT=5000
 connection_status = "OFFLINE "
-my_match_status = "AVAILABLE"
+
 
 dirname = os.path.dirname(__file__)
-filename = os.path.join(dirname, "notif.mp3")
-
+filename = os.path.join(dirname, "notif.wav")
+#mysong = AudioSegment.from_wav(filename)
 
 
 #Frame 3
 
 register_frame = QFrame()
+register_frame.setWindowIcon(QIcon('envelope.ico'))
 register_frame.setWindowTitle("Chit-Chat v1.0.")
 register_box=QFormLayout(register_frame)
 nickname = QLineEdit(register_frame)
@@ -96,6 +101,7 @@ register_button.clicked.connect(send_to_database)
 # Frame 2
 
 chat_frame = QFrame()
+chat_frame.setWindowIcon(QIcon('envelope.ico'))
 chat_frame.setWindowTitle("Chit-Chat v1.0.")
 msg_list = QListWidget(chat_frame)
 msg_list.setGeometry(10,10,1200,550)
@@ -112,13 +118,16 @@ msg_area.setVerticalScrollBar(scroll)
 send_button = QPushButton(chat_frame)
 send_button.setText("Send")
 send_button.setGeometry(1230,570, 100, 40)
-send_button.setEnabled(False)
+send_button.setEnabled(True)
 
 
 shuffle_button = QPushButton(chat_frame)
 shuffle_button.setText("Shuffle")
 shuffle_button.setGeometry(1230, 620, 100,40)
 
+send_photo=QPushButton(chat_frame)
+send_photo.setText("Send Photo")
+send_photo.setGeometry(1230, 520, 100, 40)
 
 def transition():
     global connection_status
@@ -154,17 +163,16 @@ def recv():
     global send_button
     while True:
         if connection_status == "ONLINE":
-            data = s.recv(1024).decode()
+            data = s.recv(1024).decode("utf-8")
             if data == "You have been connected to someone!":
                 send_button.setEnabled(True)
             if data == "Your partner has left the chat :(":
                 send_button.setEnabled(False)
-            if "[FromServer]" in data:
-                data = data.strip("[FromServer]")
-        
+
+
             if not data: sys.exit(0)
             msg_list.addItem(data)
-            playsound(filename)
+            #play(mysong)
 
 
 
@@ -173,9 +181,25 @@ def send(event=None):
     if connection_status == "ONLINE":
         s.send(message.encode('utf-8'))
         msg_area.clear()
+        msg_list.addItem("Me:"+message)
 
 def shuffle(event=None):
+    timer = QTimer()
     s.send("?pRG=gmxHD74cEm".encode("utf-8"))
+    timer.start(2000)
+
+def sendphoto():
+    dlg = QFileDialog()
+    dlg.setFileMode(QFileDialog.AnyFile)
+    img_dir = QStringListModel()
+
+    if dlg.exec_():
+        img_dir = dlg.selectedFiles()[0]
+        data = open(r'{}'.format(img_dir),'rb').read()
+        s.send(data)
+        s.send(data)
+
+
 
 
 
@@ -190,16 +214,18 @@ def closeEvent(self, event):
 
 
 
-send_button.clicked.connect(send)
-send_button.setShortcut("Down")
 shuffle_button.clicked.connect(shuffle)
 shuffle_button.setShortcut("Ctrl+S")
-
+send_button.clicked.connect(send)
+send_button.setShortcut("Down")
+send_photo.clicked.connect(sendphoto)
 
 # Frame 1
 
 window=QFrame()
+window.setWindowIcon(QIcon('envelope.ico'))
 window.setWindowTitle("Chit-Chat v1.0.")
+
 
 
 fbox = QFormLayout()
@@ -220,6 +246,8 @@ login.setText("Login")
 login.clicked.connect(transition)
 login.setShortcut("Return")
 
+
+
 register_button=QPushButton("Don't have an account?")
 register_button.clicked.connect(open_reg)
 
@@ -231,10 +259,12 @@ fbox.addRow(register_button)
 window.setLayout(fbox)
 window.show()
 
+
 t1=Thread(target=recv)
 t1.start()
 
 chat_frame.closeEvent = functools.partial (closeEvent, chat_frame)
+
 
 
 sys.exit(app.exec())
