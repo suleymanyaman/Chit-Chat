@@ -4,5 +4,5 @@ A desktop chat application written in Python. Through shuffling, the chatters ar
 
 Incorporated features as of September 2022: 
   - GUI 
-  - Caesar cypher as a means of end-to-end encyrption 
+  - Caesar (de)cypher as a means of end-to-end encyrption 
   - Registration and authentication through a remote MySQL database connection 
